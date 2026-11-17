@@ -1152,7 +1152,7 @@ function markSeen(){
 }
 function pubState(){
   const p={fase:H.fase,ronda:H.ronda,sc:H.sc,last:H.last,evento:H.fase==='evento'?H.queue[0]:null,pts:H.points||{},ruleta:H.ruleta};
-  if(H.quiz)p.quiz={n:H.quiz.n,stage:H.quiz.stage||'pregunta',hot:H.quiz.hot||null,reveal:!!H.quiz.reveal,c:H.quiz.reveal?QUIZ[H.quiz.n].c:null,gain:H.quiz.reveal?H.quiz.gain:null};
+  if(H.quiz)p.quiz={n:H.quiz.n,stage:H.quiz.stage||'pregunta',reveal:!!H.quiz.reveal,c:H.quiz.reveal?QUIZ[H.quiz.n].c:null,gain:H.quiz.reveal?H.quiz.gain:null};
   if(H.fase==='riesgo'&&H.risk)p.risk={segs:H.risk.segs,res:H.risk.res};
   p.fired=H.fired||[];
   if(H.ending){const e=ENDINGS[H.ending];p.ending={k:H.ending,t:e.t,txt:e.txt,l:e.l,mood:e.mood,ico:e.ico};}
@@ -1222,8 +1222,7 @@ function hostChoose(i){
 function hostTheory(){H.theory=true;saveHost();hostRender();}
 function hostNext(){ // consecuencia -> pregunta relámpago (solo en 2 rondas)
   if(QUIZ_AT[H.ronda]===undefined){hostAfterQuiz();return;}
-  const hasHum=Object.keys(players).length>0;
-  H.quiz={n:QUIZ_AT[H.ronda],stage:hasHum?'ruleta':'pregunta',hot:null,reveal:false,seen:{},start:hasHum?null:Date.now(),gain:{}}; H.fase='quiz'; saveHost(); hostRender(); scrollTo(0,0); SFX.flip();
+  H.quiz={n:QUIZ_AT[H.ronda],stage:'pregunta',reveal:false,seen:{},start:Date.now(),gain:{}}; H.fase='quiz'; saveHost(); hostRender(); scrollTo(0,0); SFX.flip();
 }
 function quizCounts(){const a=quizAns['q'+H.quiz.n]||{};const c=[0,0,0,0];let n=0;Object.keys(a).forEach(pid=>{if(players[pid]&&c[a[pid]]!==undefined){c[a[pid]]++;n++;}});return {c,n};}
 function hostQuizReveal(){
@@ -1232,7 +1231,7 @@ function hostQuizReveal(){
   const q=QUIZ[H.quiz.n], a=quizAns['q'+H.quiz.n]||{}; H.points=H.points||{}; H.quiz.gain={};
   Object.keys(a).forEach(pid=>{ if(!players[pid])return; if(a[pid]===q.c){
     const el=Math.max(0,((H.quiz.seen[pid]||Date.now())-H.quiz.start)/1000);
-    let g=200+Math.round(100*Math.max(0,1-el/QUIZ_SECS)); if(H.quiz.hot&&H.quiz.hot.pid===pid)g*=2; H.quiz.gain[pid]=g; H.points[pid]=(H.points[pid]||0)+g; }});
+    let g=200+Math.round(100*Math.max(0,1-el/QUIZ_SECS)); H.quiz.gain[pid]=g; H.points[pid]=(H.points[pid]||0)+g; }});
   H.quiz.reveal=true; saveHost(); hostRender(); SFX.good();
 }
 function hostAfterQuiz(){
@@ -1297,7 +1296,7 @@ function soloVote(i,d){
 function soloAward(pid){
   if(!H||!H.solo||!H.quiz||!H.quiz.reveal)return; const g=H.quiz.gain=H.quiz.gain||{}; H.points=H.points||{};
   if(g[pid]){H.points[pid]-=g[pid];delete g[pid];}
-  else{const k=Object.keys(g).length; let v=Math.max(200,300-25*k); if(H.quiz.hot&&H.quiz.hot.pid===pid)v*=2; g[pid]=v; H.points[pid]=(H.points[pid]||0)+v; SFX.tick();}
+  else{const k=Object.keys(g).length; let v=Math.max(200,300-25*k); g[pid]=v; H.points[pid]=(H.points[pid]||0)+v; SFX.tick();}
   saveHost(); hostRender();
 }
 document.addEventListener('keydown',e=>{
@@ -1344,17 +1343,6 @@ function spinWheel(n,win,done){
   for(let t=0;t<=T;t+=15){const ang=theta*(1-Math.pow(1-t/T,3)), sIdx=Math.floor(ang/seg); if(sIdx!==last){last=sIdx;setTimeout(()=>SFX.tick(),t);}}
   setTimeout(()=>{spinning=false;done();},T+100);
 }
-function hostSpin(){
-  const list=wheelList(); if(!list.length||spinning)return;
-  const btn=document.getElementById('spinBtn'), win=Math.floor(Math.random()*list.length);
-  if(btn)btn.disabled=true; const wn=document.getElementById('winner'); if(wn)wn.innerHTML="";
-  spinWheel(list.length,win,()=>{ const p=list[win];
-    if(wn)wn.innerHTML=`🔥 ${esc(p.n)}<div class="small" style="font-family:DM Sans">va a la silla caliente</div>`;
-    if(btn){btn.disabled=false;btn.textContent="Girar de nuevo";btn.className="btn ghost big";}
-    const sq=document.getElementById('showQ'); if(sq)sq.style.display="";
-    SFX.fanfare(); H.quiz.hot={pid:p.id,n:p.n}; saveHost();});
-}
-function hostQuizShow(){ if(!H.quiz)return; H.quiz.stage='pregunta'; H.quiz.start=Date.now(); H.quiz.seen={}; saveHost(); hostRender(); SFX.reveal(); }
 /* ------------------------- RENDER PRESENTADOR ------------------------- */
 const STEP_NAMES=["Gobernanza","DD. HH.","Laboral","Ambiente","Op. justa","Consumidores","Comunidad","ESG y BIC"];
 function impactOf(fx){if(!fx)return '';const v=[fx.e,fx.s,fx.a],pos=v.filter(x=>x>0).length,neg=v.filter(x=>x<0).length;return neg===0&&pos>0?'good':pos===0&&neg>0?'bad':(fx.e+fx.s+fx.a>=0?'mixed':'bad');}
@@ -1390,7 +1378,6 @@ function hostRender(soft,onlyTop){
   if(!soft)$app().classList.remove('split');
   if(soft&&H.fase==='lobby'&&document.getElementById('names')){updateLobby();return;}
   if(soft&&H.fase==='quiz'&&document.getElementById('quizArea')){updateQuiz();return;}
-  if(soft&&H.fase==='quiz'&&document.getElementById('ruletaArea'))return;
   if(soft&&H.fase!=='final')return;
   const pre=showSc?(H.fase!=='final'?stepsHTML():"")+rivalHTML()+veredaSVG(H):"";
   $app().classList.toggle('split',!!pre&&H.fase!=='final');
@@ -1402,7 +1389,7 @@ function hostRender(soft,onlyTop){
         <li>En cada dilema, pidan a todos que escriban <b>A</b>, <b>B</b> o <b>C</b> en el chat.</li>
         <li>Sumen los votos con los botones <b>+</b> y <b>−</b>, o con el teclado: <kbd>A</kbd> <kbd>B</kbd> <kbd>C</kbd> suman un voto y <kbd>Mayús</kbd> + letra resta uno.</li>
         <li>En las preguntas relámpago, la clase responde en el chat y ustedes marcan quién acertó, en orden de llegada.</li></ol>
-      <label class="field"><span>Nombres de los estudiantes (opcional; uno por línea o separados por comas). Se usan para la ruleta y el ranking.</span>
+      <label class="field"><span>Nombres de los estudiantes (opcional; uno por línea o separados por comas). Se usan para el ranking de las preguntas relámpago.</span>
         <textarea id="soloNames" rows="5" style="width:100%;font:inherit;padding:10px;border:2px solid var(--line);border-radius:12px">${esc((H.solo.names||[]).join("\n"))}</textarea></label>
       <p class="small">En el Plan B no hay roles secretos ni bots: los siete cargos se muestran a todos y pueden pedir voluntarios para defender cada uno.</p>
       <div class="row right"><button class="btn big" onclick="soloStart()">Iniciar el juego</button></div></div>`;
@@ -1470,23 +1457,14 @@ function hostRender(soft,onlyTop){
         <p class="q">${r.th.q}</p></div>`:`<button class="btn ghost" onclick="hostTheory()">Ver la teoría</button>`}
       <div class="row right" style="margin-top:18px"><button class="btn" onclick="hostNext()">${QUIZ_AT[H.ronda]!==undefined?'Pregunta relámpago ⚡':(H.ronda===ROUNDS.length-1?'Ver el resultado final →':'Siguiente →')}</button></div></div>`;
   }
-  else if(H.fase==='quiz'&&H.quiz.stage==='ruleta'){
-    h=pre+`<div class="card fade" id="ruletaArea"><div class="quizhead"><b>⚡ Pregunta relámpago ${H.quiz.n+1} de ${QUIZ.length}</b><span class="small" style="color:#f1e2cf">Primero, la ruleta escoge quién va a la silla caliente</span></div>
-      <div class="hotseat"><div class="wheelwrap"><div class="pointer"></div>${wheelSVG(wheelList())}</div>
-      <div class="hotinfo"><h2 style="color:var(--coffee)">🔥 La silla caliente</h2><p>La ruleta escoge a un estudiante. <b>Todos</b> responden desde el celular, pero si el elegido acierta, <b>gana el doble de puntos</b>.</p>
-      <div class="winner" id="winner"></div>
-      <div class="row" style="margin-top:12px"><button class="btn big" id="spinBtn" onclick="hostSpin()">🎡 Girar la ruleta</button><button class="btn big" id="showQ" onclick="hostQuizShow()" style="display:none">Mostrar la pregunta →</button></div></div></div></div>`;
-    $app().innerHTML=h; return;
-  }
   else if(H.fase==='quiz'){
     const q=QUIZ[H.quiz.n], rv=H.quiz.reveal;
     h=pre+`<div class="card fade" id="quizArea"><div class="quizhead"><b>⚡ Pregunta relámpago ${H.quiz.n+1} de ${QUIZ.length}</b><span class="small" style="color:#f1e2cf">${H.solo?"Respondan en el chat con A, B, C o D":"Respondan desde el celular · entre más rápido, más puntos"}</span>${rv?"":`<span class="qtimer" id="qtm">${QUIZ_SECS}</span>`}</div>${rv?"":`<div class="qbar"><i id="qbar" style="width:100%"></i></div>`}
-      ${H.quiz.hot?`<div class="banner other">🔥 En la silla caliente: <b>${esc(H.quiz.hot.n)}</b> (si acierta, puntos dobles)</div>`:""}
       <p class="situ" style="font-size:1.4rem">${q.q}</p>
       <div class="qopts">${q.o.map((t,i)=>`<div class="qo c${i} ${rv?(i===q.c?'right':'wrong'):''}"><span class="k">${"ABCD"[i]}</span><span>${t}</span><span class="cnt" id="qc${i}">${rv?'':''}</span></div>`).join("")}</div>
       <div class="votebar"><span id="qstatus"></span>
       ${rv?`<button class="btn" onclick="hostAfterQuiz()">${H.ronda===ROUNDS.length-1?'Ver el resultado final':'Continuar'} →</button>`:`<button class="btn" onclick="hostQuizReveal()">Revelar respuesta</button>`}</div>
-      ${rv&&H.solo&&wheelList().length?`<div class="theory" style="margin-top:14px"><h3 style="margin:0 0 6px">¿Quién acertó en el chat?</h3><p class="small" style="margin:0 0 8px">Hagan clic en los nombres en el orden en que llegaron las respuestas correctas (el primero gana 300 puntos y cada siguiente un poco menos; la silla caliente vale doble).</p><div class="names">${wheelList().map(p=>`<button class="pl award ${(H.quiz.gain||{})[p.id]?'on':''}" aria-pressed="${!!(H.quiz.gain||{})[p.id]}" onclick="soloAward('${p.id}')">${esc(p.n)}${(H.quiz.gain||{})[p.id]?` +${H.quiz.gain[p.id]}`:''}</button>`).join("")}</div></div>`:""}
+      ${rv&&H.solo&&wheelList().length?`<div class="theory" style="margin-top:14px"><h3 style="margin:0 0 6px">¿Quién acertó en el chat?</h3><p class="small" style="margin:0 0 8px">Hagan clic en los nombres en el orden en que llegaron las respuestas correctas (el primero gana 300 puntos y cada siguiente un poco menos).</p><div class="names">${wheelList().map(p=>`<button class="pl award ${(H.quiz.gain||{})[p.id]?'on':''}" aria-pressed="${!!(H.quiz.gain||{})[p.id]}" onclick="soloAward('${p.id}')">${esc(p.n)}${(H.quiz.gain||{})[p.id]?` +${H.quiz.gain[p.id]}`:''}</button>`).join("")}</div></div>`:""}
       ${rv?quizTop():""}</div>`;
     $app().innerHTML=h; updateQuiz(); if(!rv)startQuizTimer(); return;
   }
@@ -1523,8 +1501,7 @@ function hostRender(soft,onlyTop){
 function quizTop(){
   const g=H.quiz.gain||{}; const ids=Object.keys(g).sort((a,b)=>g[b]-g[a]).slice(0,3);
   if(!ids.length)return H.solo?"":`<p class="small" style="margin-top:10px">Nadie acertó esta vez.</p>`;
-  const hot=H.quiz.hot, hotTxt=hot?(g[hot.pid]?`<p style="margin-top:10px">🔥 <b>${esc(hot.n)}</b> acertó desde la silla caliente: <b>+${g[hot.pid]}</b> puntos.</p>`:`<p style="margin-top:10px">🔥 <b>${esc(hot.n)}</b> no acertó desde la silla caliente.</p>`):"";
-  return hotTxt+`<p style="margin-top:8px"><b>Los más rápidos:</b> ${ids.map((id,i)=>`${["🥇","🥈","🥉"][i]} ${esc(players[id]?players[id].n:"?")} (+${g[id]})`).join(" · ")}</p>`;
+  return `<p style="margin-top:8px"><b>Los más rápidos:</b> ${ids.map((id,i)=>`${["🥇","🥈","🥉"][i]} ${esc(players[id]?players[id].n:"?")} (+${g[id]})`).join(" · ")}</p>`;
 }
 function updateQuiz(){
   if(!H.quiz||H.quiz.stage!=='pregunta')return; const {c,n}=quizCounts(), tot=Object.keys(players).length;
@@ -1695,7 +1672,7 @@ function playerVote(i){
 }
 function myAns(){if(!P.pub||!P.pub.quiz)return null;const k='q'+P.pub.quiz.n;return P.pend[k]!==undefined?P.pend[k]:P.ma;}
 function playerAnswer(i){
-  const pb=P.pub; if(!pb||pb.fase!=='quiz'||!pb.quiz||pb.quiz.stage==='ruleta'||pb.quiz.reveal||myAns()!==null)return;
+  const pb=P.pub; if(!pb||pb.fase!=='quiz'||!pb.quiz||pb.quiz.reveal||myAns()!==null)return;
   P.pend['q'+pb.quiz.n]=String(i);
   DB.set(`salas/${P.code}/quiz/q${pb.quiz.n}/${P.pid}`,i); playerRender();
 }
@@ -1735,15 +1712,9 @@ function playerRender(){
     h+=`<div class="card fade"><span class="tag">Ronda ${pb.ronda+1} · ${r.materia}</span>
       <div class="chosen">La junta eligió <b>${"ABC"[L.i]}</b>: ${r.opts[L.i].t}</div>
       ${stampHTML(L.fx)}<p class="cons">${L.c}</p>${deltaChips(L.fx)}${riskNote(L,pb.ronda,pb.fired)}${myMood(L)}<p class="small">Mira la pantalla del presentador para la explicación. ${QUIZ_AT[pb.ronda]!==undefined?'¡Prepárate: viene una pregunta relámpago!':''}</p></div>`;
-  } else if(pb.fase==='quiz'&&pb.quiz&&pb.quiz.stage==='ruleta'){
-    const hot=pb.quiz.hot;
-    h+=`<div class="card fade"><div class="quizhead"><b>⚡ Pregunta relámpago ${pb.quiz.n+1} de ${QUIZ.length}</b></div>
-      ${hot?(hot.pid===P.pid?`<div class="banner me">🔥 ¡Te tocó la silla caliente! Si aciertas, ganas el doble.</div>`:`<div class="banner other">🔥 ${esc(hot.n)} va a la silla caliente.</div>`):`<p class="situ">🎡 La ruleta está escogiendo quién va a la silla caliente… ¡mira la pantalla!</p>`}
-      <p class="small">La pregunta aparecerá aquí en un momento. Todos pueden responder.</p></div>`;
-    if(hot&&hot.pid===P.pid&&P.vib!=='h'+pb.quiz.n){P.vib='h'+pb.quiz.n;try{navigator.vibrate&&navigator.vibrate([200,100,200]);}catch(e){}}
   } else if(pb.fase==='quiz'&&pb.quiz){
-    const q=QUIZ[pb.quiz.n], ma=myAns(), rv=pb.quiz.reveal, hot=pb.quiz.hot;
-    h+=`<div class="card fade"><div class="quizhead"><b>⚡ Pregunta relámpago ${pb.quiz.n+1} de ${QUIZ.length}</b></div>${hot&&hot.pid===P.pid&&!rv?`<div class="banner me" style="animation:none">🔥 Estás en la silla caliente: tu respuesta vale doble</div>`:""}<p class="situ">${q.q}</p>
+    const q=QUIZ[pb.quiz.n], ma=myAns(), rv=pb.quiz.reveal;
+    h+=`<div class="card fade"><div class="quizhead"><b>⚡ Pregunta relámpago ${pb.quiz.n+1} de ${QUIZ.length}</b></div><p class="situ">${q.q}</p>
       <div class="qopts">${q.o.map((t,i)=>{let cls=`qo c${i}`;if(rv)cls+=i===q.c?' right':(ma===String(i)?' wrong':'');else if(ma===String(i))cls+=' sel';
         return `<button class="${cls}" onclick="playerAnswer(${i})" ${rv||ma!==null?'disabled':''}><span class="k">${"ABCD"[i]}</span><span>${t}</span></button>`;}).join("")}</div>
       <p style="margin-top:12px;font-weight:700">${rv?(ma===String(q.c)?`✓ ¡Correcto! +${(pb.quiz.gain&&pb.quiz.gain[P.pid])||0} puntos`:ma===null?"No respondiste a tiempo.":"✗ Incorrecto."):(ma!==null?"Respuesta enviada. Espera el resultado…":"¡Responde rápido! Más rapidez, más puntos.")}</p></div>`;
