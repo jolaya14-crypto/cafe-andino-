@@ -818,8 +818,10 @@ function showFatal(msg){$app().innerHTML=`<div class="card" role="alert"><h2>Alg
 
 /* ===================== PREGUNTAS RELÁMPAGO ===================== */
 const QUIZ = [
-  {q:"¿Qué es el greenwashing?", o:["Una certificación ambiental","Un impuesto verde","Lavar productos con agua reciclada","Mostrar una imagen ambiental mejor que la real"], c:3},
-  {q:"¿Qué ley creó las sociedades BIC en Colombia?", o:["Ley 1480 de 2011","Ley 100 de 1993","Ley 1314 de 2009","Ley 1901 de 2018"], c:3}
+  {q:"¿Qué es el greenwashing?", o:["Una certificación ambiental","Un impuesto verde","Lavar productos con agua reciclada","Mostrar una imagen ambiental mejor que la real"], c:3,
+   ex:"Greenwashing es mostrar una imagen ambiental mejor que la real, como la campaña «Café que cuida el agua» de la ronda 4, que limpiaba solo una parte del vertimiento."},
+  {q:"¿Qué ley colombiana prohíbe la publicidad engañosa?", o:["Ley 1901 de 2018","Ley 100 de 1993","Ley 1480 de 2011","Ley 1314 de 2009"], c:2,
+   ex:"El Estatuto del Consumidor (Ley 1480 de 2011) prohíbe la publicidad engañosa, y la Superintendencia de Industria y Comercio puede sancionarla. Lo vimos en la ronda 6, con la etiqueta «100 % orgánico»."}
 ];
 const QUIZ_AT={3:0,6:1}; // después de la ronda 4 (medio ambiente) y de la ronda 7 (comunidad)
 const QUIZ_SECS=20;
@@ -1462,6 +1464,7 @@ function hostRender(soft,onlyTop){
     h=pre+`<div class="card fade" id="quizArea"><div class="quizhead"><b>⚡ Pregunta relámpago ${H.quiz.n+1} de ${QUIZ.length}</b><span class="small" style="color:#f1e2cf">${H.solo?"Respondan en el chat con A, B, C o D":"Respondan desde el celular · entre más rápido, más puntos"}</span>${rv?"":`<span class="qtimer" id="qtm">${QUIZ_SECS}</span>`}</div>${rv?"":`<div class="qbar"><i id="qbar" style="width:100%"></i></div>`}
       <p class="situ" style="font-size:1.4rem">${q.q}</p>
       <div class="qopts">${q.o.map((t,i)=>`<div class="qo c${i} ${rv?(i===q.c?'right':'wrong'):''}"><span class="k">${"ABCD"[i]}</span><span>${t}</span><span class="cnt" id="qc${i}">${rv?'':''}</span></div>`).join("")}</div>
+      ${rv&&q.ex?`<div class="lesson" style="margin:12px 0 0">💡 ${q.ex}</div>`:""}
       <div class="votebar"><span id="qstatus"></span>
       ${rv?`<button class="btn" onclick="hostAfterQuiz()">${H.ronda===ROUNDS.length-1?'Ver el resultado final':'Continuar'} →</button>`:`<button class="btn" onclick="hostQuizReveal()">Revelar respuesta</button>`}</div>
       ${rv&&H.solo&&wheelList().length?`<div class="theory" style="margin-top:14px"><h3 style="margin:0 0 6px">¿Quién acertó en el chat?</h3><p class="small" style="margin:0 0 8px">Hagan clic en los nombres en el orden en que llegaron las respuestas correctas (el primero gana 300 puntos y cada siguiente un poco menos).</p><div class="names">${wheelList().map(p=>`<button class="pl award ${(H.quiz.gain||{})[p.id]?'on':''}" aria-pressed="${!!(H.quiz.gain||{})[p.id]}" onclick="soloAward('${p.id}')">${esc(p.n)}${(H.quiz.gain||{})[p.id]?` +${H.quiz.gain[p.id]}`:''}</button>`).join("")}</div></div>`:""}
@@ -1717,7 +1720,7 @@ function playerRender(){
     h+=`<div class="card fade"><div class="quizhead"><b>⚡ Pregunta relámpago ${pb.quiz.n+1} de ${QUIZ.length}</b></div><p class="situ">${q.q}</p>
       <div class="qopts">${q.o.map((t,i)=>{let cls=`qo c${i}`;if(rv)cls+=i===q.c?' right':(ma===String(i)?' wrong':'');else if(ma===String(i))cls+=' sel';
         return `<button class="${cls}" onclick="playerAnswer(${i})" ${rv||ma!==null?'disabled':''}><span class="k">${"ABCD"[i]}</span><span>${t}</span></button>`;}).join("")}</div>
-      <p style="margin-top:12px;font-weight:700">${rv?(ma===String(q.c)?`✓ ¡Correcto! +${(pb.quiz.gain&&pb.quiz.gain[P.pid])||0} puntos`:ma===null?"No respondiste a tiempo.":"✗ Incorrecto."):(ma!==null?"Respuesta enviada. Espera el resultado…":"¡Responde rápido! Más rapidez, más puntos.")}</p></div>`;
+      <p style="margin-top:12px;font-weight:700">${rv?(ma===String(q.c)?`✓ ¡Correcto! +${(pb.quiz.gain&&pb.quiz.gain[P.pid])||0} puntos`:ma===null?"No respondiste a tiempo.":"✗ Incorrecto."):(ma!==null?"Respuesta enviada. Espera el resultado…":"¡Responde rápido! Más rapidez, más puntos.")}</p>${rv&&q.ex?`<div class="lesson" style="margin-top:10px">💡 ${q.ex}</div>`:""}</div>`;
   } else if(pb.fase==='riesgo'&&pb.risk){
     const segs=pb.risk.segs, N=segs.length, f=pb.risk.res!==null?segs[pb.risk.res]:null, fv=f?evInfo(f,pb.sc):null;
     const uniq=kd=>[...new Set(segs.filter(x=>segKind(x)===kd))], cnt=kd=>segs.filter(x=>segKind(x)===kd).length;
